@@ -1,5 +1,5 @@
 from .attacker import Attacker
-from .scorer import Scorer
+from .scorer import Scorer, TrueScorer
 from .summarizer import Summarizer
 from .library import Library
 from .log import Log

@@ -111,7 +111,10 @@ class AutoDANTurbo:
                     not_scussed = True
                     while not_scussed:
                         try:
-                            assessment, scorer_system = self.scorer.scoring(request, target_response, max_length=10000, do_sample=True, temperature=0.7, top_p=0.9)
+                            assessment, scorer_system = self.scorer.scoring(
+                                request, jailbreak_prompt, target_response,
+                                max_length=10000, do_sample=True, temperature=0.7, top_p=0.9
+                            )
                             not_scussed_sub = True
                             while not_scussed_sub:
                                 try:
@@ -180,7 +183,10 @@ class AutoDANTurbo:
                         success = False
                         while not success:
                             try:
-                                assessment, scorer_system = self.scorer.scoring(request, target_response, max_length=10000, do_sample=True, temperature=0.7, top_p=0.9)
+                                assessment, scorer_system = self.scorer.scoring(
+                                    request, jailbreak_prompt, target_response,
+                                    max_length=10000, do_sample=True, temperature=0.7, top_p=0.9
+                                )
                                 score = self.scorer.wrapper(assessment, max_length=2000, do_sample=False)
                                 success = True
                             except Exception as e:
@@ -202,7 +208,10 @@ class AutoDANTurbo:
                         success = False
                         while not success:
                             try:
-                                assessment, scorer_system = self.scorer.scoring(request, target_response, max_length=10000, do_sample=True, temperature=0.7, top_p=0.9)
+                                assessment, scorer_system = self.scorer.scoring(
+                                    request, jailbreak_prompt, target_response,
+                                    max_length=10000, do_sample=True, temperature=0.7, top_p=0.9
+                                )
                                 score = self.scorer.wrapper(assessment, max_length=2000, do_sample=False)
                                 success = True
                             except Exception as e:
@@ -292,7 +301,10 @@ class AutoDANTurbo:
                 success = False
                 while not success:
                     try:
-                        assessment, scorer_system = self.scorer.scoring(request, target_response, max_length=10000, do_sample=True, temperature=0.7, top_p=0.9)
+                        assessment, scorer_system = self.scorer.scoring(
+                            request, jailbreak_prompt, target_response,
+                            max_length=10000, do_sample=True, temperature=0.7, top_p=0.9
+                        )
                         score = self.scorer.wrapper(assessment, max_length=2000, do_sample=False)
                         success = True
                     except Exception as e:
@@ -312,12 +324,15 @@ class AutoDANTurbo:
                 success = False
                 while not success:
                     try:
-                        assessment, scorer_system = self.scorer.scoring(request, target_response, max_length=10000, do_sample=True, temperature=0.7, top_p=0.9)
+                        assessment, scorer_system = self.scorer.scoring(
+                            request, jailbreak_prompt, target_response,
+                            max_length=10000, do_sample=True, temperature=0.7, top_p=0.9
+                        )
                         score = self.scorer.wrapper(assessment, max_length=2000, do_sample=False)
                         success = True
                     except Exception as e:
                         self.logger.error(f"Scorer failed to score the response, retrying: {e}")
                 prev_target_response = target_response
-            if score > self.break_score:
+            if score >= self.break_score:
                 break
         return jailbreak_prompt
