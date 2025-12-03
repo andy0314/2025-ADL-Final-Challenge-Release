@@ -1,9 +1,10 @@
-from openai import OpenAI
 import requests
 import json
 
 class DeepSeekModel:
     def __init__(self, api_key, model):
+        from openai import OpenAI
+
         self.client = OpenAI(api_key=api_key, base_url="https://api.deepseek.com")
         self.model = model
 

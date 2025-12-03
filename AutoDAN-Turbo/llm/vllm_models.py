@@ -2,7 +2,7 @@ import os
 import json
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM
-from vllm import LLM, SamplingParams
+
 
 class VLLMModel:
     def __init__(self, repo_name: str, config_dir: str, config_name: str, token=None):
@@ -15,6 +15,9 @@ class VLLMModel:
             config_name (str): Name of the config file.
             token (str): Hugging Face API token for private models.
         """
+        from vllm import LLM, SamplingParams
+        self.SamplingParams = SamplingParams
+
         print(f"Checking for model in '{config_dir}/model_ckpt'...")
         model_dir = f"{config_dir}/model_ckpt"
         if not os.path.exists(model_dir):
@@ -61,7 +64,7 @@ class VLLMModel:
             {'role': 'user', 'content': f'{user}'},
         ]
         plain_text = self.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-        sampling_params = SamplingParams(
+        sampling_params = self.SamplingParams(
             max_tokens=max_length,
             stop_token_ids=[self.tokenizer.eos_token_id],
             temperature=kwargs['temperature'],
@@ -98,7 +101,7 @@ class VLLMModel:
         ]
         plain_text = self.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
 
-        sampling_params = SamplingParams(
+        sampling_params = self.SamplingParams(
             max_tokens=max_length,
             stop_token_ids=[self.tokenizer.eos_token_id],
             temperature=kwargs['temperature'],
@@ -133,7 +136,7 @@ class VLLMModel:
         plain_text = self.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
         plain_text += condition
 
-        sampling_params = SamplingParams(
+        sampling_params = self.SamplingParams(
             max_tokens=max_length,
             stop_token_ids=[self.tokenizer.eos_token_id],
             temperature=kwargs['temperature'],

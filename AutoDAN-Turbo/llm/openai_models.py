@@ -1,6 +1,4 @@
-import openai
 import logging
-from openai import AzureOpenAI
 import json
 
 
@@ -16,6 +14,9 @@ class OpenAIEmbeddingModel:
         embedding_model: str = "text-embedding-ada-002",
         logger: logging.Logger = None
     ):
+        import openai
+        from openai import AzureOpenAI
+
         self.azure = azure
         self.azure_endpoint = azure_endpoint
         self.azure_api_version = azure_api_version
@@ -33,6 +34,8 @@ class OpenAIEmbeddingModel:
             openai.api_key = openai_api_key
 
     def encode(self, text):
+        import openai
+
         try:
             single_input = False
             if isinstance(text, str):
