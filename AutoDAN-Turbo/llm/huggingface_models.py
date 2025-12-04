@@ -197,7 +197,7 @@ class HuggingFaceEmbeddingModel:
         # normalize embeddings
         embeddings = F.normalize(embeddings, p=2, dim=1)
 
-        embeddings = embeddings.cpu().numpy().astype(np.float32)
+        embeddings = embeddings.float().cpu().numpy().astype(np.float32)
 
         if single_input and len(embeddings) == 1:
             return embeddings[0]
