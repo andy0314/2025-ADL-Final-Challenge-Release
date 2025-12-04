@@ -8,8 +8,8 @@ from framework import Scorer, TrueScorer
 def parse_args():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--input_strategy_library", default="logs_r/lifelong_strategy_library.pkl")
-    parser.add_argument("--output_strategy_library", type=Path, default="logs_r/lifelong_strategy_library.pkl")
+    parser.add_argument("--input_strategy_library", type=Path, default="logs_r/lifelong_strategy_library.pkl")
+    parser.add_argument("--output_strategy_library", type=Path)
 
     args = parser.parse_args()
     return args
@@ -30,8 +30,9 @@ def main():
             else:
                 strategy["Score"][i] = 0.0
 
-    args.output_strategy_library.parent.mkdir(parents=True, exist_ok=True)
-    with open(args.output_strategy_library, "wb") as f:
+    output_strategy_library = args.output_strategy_library or args.input_strategy_library
+    output_strategy_library.parent.mkdir(parents=True, exist_ok=True)
+    with open(output_strategy_library, "wb") as f:
         pickle.dump(library, f)
 
 
