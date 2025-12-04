@@ -39,6 +39,7 @@ def config():
     config.add_argument("--embed_instruction", type=str, default="Instruct: Retrieve semantically similar text.\nQuery:{query}")
 
     config.add_argument("--language_model", type=str, default="google/gemma-1.1-2b-it")
+    config.add_argument("--lm_combine_system_user", action="store_true")
 
     config.add_argument("--use_llm_scorer", action="store_true")
     config.add_argument("--guard_model", type=str, default="Qwen/Qwen3Guard-Gen-0.6B")
@@ -73,10 +74,12 @@ if __name__ == '__main__':
     load_dotenv()
     hf_token = os.getenv("HF_TOKEN")
 
-    model = HuggingFaceLanguageModel(args.model, hf_token)
+    model = HuggingFaceLanguageModel(args.model, token=hf_token)
     # configure your own base model here
 
-    language_model = HuggingFaceLanguageModel(args.language_model, hf_token)
+    language_model = HuggingFaceLanguageModel(
+        args.language_model, args.lm_combine_system_user, hf_token
+    )
     attacker = Attacker(language_model)
     summarizer = Summarizer(language_model)
 

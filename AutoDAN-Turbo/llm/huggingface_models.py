@@ -10,7 +10,7 @@ def strip_double_quotes(input_str):
     return input_str
 
 class HuggingFaceLanguageModel:
-    def __init__(self, repo_name: str, token=None):
+    def __init__(self, repo_name: str, combine_system_user=False, token=None):
         """
         Initialize the Hugging Face model class in a distributed manner.
 
@@ -26,6 +26,8 @@ class HuggingFaceLanguageModel:
         )
         print("Model loaded with automatic device mapping across GPUs.")
 
+        self.combine_system_user = combine_system_user
+
     def generate(self, system: str, user: str, **kwargs):
         """
         Generate a response based on the input text.
@@ -39,10 +41,7 @@ class HuggingFaceLanguageModel:
         Returns:
             str: The generated response from the model.
         """
-        messages = [
-            {'role': 'system', 'content': f'{system}'},
-            {'role': 'user', 'content': f'{user}'},
-        ]
+        messages = self._get_message_turns(system, user)
         plain_text = self.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
 
         # Model and tokenizer will handle device placement automatically
@@ -115,10 +114,7 @@ class HuggingFaceLanguageModel:
         Returns:
             str: The generated response from the model.
         """
-        messages = [
-            {'role': 'system', 'content': f'{system}'},
-            {'role': 'user', 'content': f'{user}'},
-        ]
+        messages = self._get_message_turns(system, user)
         plain_text = self.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
         plain_text += condition
 
@@ -137,6 +133,15 @@ class HuggingFaceLanguageModel:
         response = self.tokenizer.decode(response_ids, skip_special_tokens=True)
         response = strip_double_quotes(response)
         return response
+
+    def _get_message_turns(self, system, user):
+        if self.combine_system_user:
+            return [{"role": "user", "content": f"{system}\n\n{user}"}]
+        else:
+            return [
+                {"role": "system", "content": system},
+                {"role": "user", "content": user},
+            ]
 
 
 class HuggingFaceEmbeddingModel:
