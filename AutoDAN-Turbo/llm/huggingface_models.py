@@ -19,12 +19,15 @@ class HuggingFaceLanguageModel:
             token (str): Hugging Face API token for private models.
         """
         self.tokenizer = AutoTokenizer.from_pretrained(repo_name, token=token)
+
+        print(f"Loading language model {repo_name} with automatic device mapping across GPUs.")
+        dtype = torch.bfloat16 if torch.cuda.is_available() and torch.cuda.get_device_capability()[0] >= 8 else torch.float16
         self.model = AutoModelForCausalLM.from_pretrained(
             repo_name,
+            torch_dtype=dtype,
             token=token,
             device_map="auto"
         )
-        print("Model loaded with automatic device mapping across GPUs.")
 
         self.combine_system_user = combine_system_user
 
@@ -161,12 +164,14 @@ class HuggingFaceEmbeddingModel:
         self.max_length = max_length
         self.embed_instruction = embed_instruction
 
+        print(f"Loading embedding model {repo_name} with automatic device mapping across GPUs.")
+        dtype = torch.bfloat16 if torch.cuda.is_available() and torch.cuda.get_device_capability()[0] >= 8 else torch.float16
         self.model = AutoModel.from_pretrained(
             repo_name,
+            torch_dtype=dtype,
             token=token,
             device_map="auto"
         )
-        print("Model loaded with automatic device mapping across GPUs.")
 
     @torch.no_grad()
     def encode(self, text):
