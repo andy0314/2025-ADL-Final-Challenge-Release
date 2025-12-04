@@ -48,11 +48,14 @@ def config():
 
 
 if __name__ == '__main__':
-    log_dir = os.path.join(os.getcwd(), 'logs')
-    os.makedirs(log_dir, exist_ok=True)
-    log_file = os.path.join(log_dir, 'running.log')
+    args = config().parse_args()
+
     logger = logging.getLogger("CustomLogger")
     logger.setLevel(logging.DEBUG)
+
+    output_dir = args.output_file.parent
+    output_dir.mkdir(parents=True, exist_ok=True)
+    log_file = output_dir / "running.log"
 
     file_handler = logging.FileHandler(log_file)
     file_handler.setLevel(logging.INFO)
@@ -66,8 +69,6 @@ if __name__ == '__main__':
 
     logger.addHandler(file_handler)
     logger.addHandler(console_handler)
-
-    args = config().parse_args()
 
     load_dotenv()
     hf_token = os.getenv("HF_TOKEN")
@@ -99,7 +100,12 @@ if __name__ == '__main__':
         text_embedding_model = HuggingFaceEmbeddingModel(
             args.embedding_model, args.pooling_strategy, args.embed_max_length, args.embed_instruction, hf_token
         )
-    retrival = Retrieval(text_embedding_model, logger)
+    retrival = Retrieval(
+        text_embedding_model,
+        logger,
+        scorer.get_decent_improvement(),
+        scorer.get_large_improvement(),
+    )
 
     target = Target(model)
     # configure your own target model here
@@ -139,7 +145,6 @@ if __name__ == '__main__':
     print(f"Resuming processing from index {start_index}/{total} (skipping {start_index} items already completed).")
 
     # Use 'a' (append) mode for resilient, incremental writing
-    args.output_file.parent.mkdir(parents=True, exist_ok=True)
     with open(args.output_file, 'a', encoding='utf-8') as f:
         for index, record in tqdm(enumerate(dataset)):
             # Skip already processed samples

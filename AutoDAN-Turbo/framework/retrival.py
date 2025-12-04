@@ -3,13 +3,15 @@ import faiss
 import numpy as np
 
 class Retrieval():
-    def __init__(self, text_embedding_model, logger):
+    def __init__(self, text_embedding_model, logger, decent_improvement, large_improvement):
         """
         :param text_embedding_model: Any model with an `.encode(text) -> np.array` method.
         :param logger: A logger instance for logging.
         """
         self.model = text_embedding_model
         self.logger = logger
+        self.decent_improvement = decent_improvement
+        self.large_improvement = large_improvement
 
     def embed(self, text):
         """Encode text using the provided model."""
@@ -134,11 +136,11 @@ class Retrieval():
         final_retrieved_strategies = []
         final_ineffective_strategies = []
         for final_s_name, final_s_info in retrieved_strategies.items():
-            if final_s_info["Score"] >= 5:
+            if final_s_info["Score"] >= self.large_improvement:
                 new_dict = {key: value for key, value in final_s_info.items() if key != 'Score'}
                 final_retrieved_strategies = [new_dict]
                 break
-            elif 2 <= final_s_info["Score"] < 5:
+            elif self.decent_improvement <= final_s_info["Score"] < self.large_improvement:
                 new_dict = {key: value for key, value in final_s_info.items() if key != 'Score'}
                 final_retrieved_strategies.append(new_dict)
                 if len(final_retrieved_strategies) >= k:

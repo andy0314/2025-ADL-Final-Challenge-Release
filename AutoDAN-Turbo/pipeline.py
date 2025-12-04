@@ -46,7 +46,7 @@ class AutoDANTurbo:
             self.logger.info(f"Jailbreak_prompt_i: {jailbreak_prompt_i}, score_i: {score_i}")
             self.logger.info(f"Jailbreak_prompt_j: {jailbreak_prompt_j}, score_j: {score_j}")
             if score_j <= score_i:
-                score_i = 1.0
+                score_i = self.scorer.get_min_score()
                 jailbreak_prompt_i = request
                 target_response_i = "Sorry, I cannot help you with that."
             current_library = self.building_library.all()
@@ -169,7 +169,7 @@ class AutoDANTurbo:
         for i in range(self.lifelong_iterations):
             for request_id in range(len(self.data['lifelong'])):
                 request = self.data['lifelong'][request_id]
-                prev_score = 1.0
+                prev_score = self.scorer.get_min_score()
                 prev_jailbreak_prompt = request
                 prev_target_response = "Sorry, I cannot help you with that."
                 for j in range(self.epochs):

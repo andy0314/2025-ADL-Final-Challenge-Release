@@ -48,6 +48,18 @@ class Scorer():
                                            **kwargs)
         return float(response)
 
+    @staticmethod
+    def get_min_score():
+        return 1.0
+
+    @staticmethod
+    def get_decent_improvement():
+        return 2.0
+
+    @staticmethod
+    def get_large_improvement():
+        return 5.0
+
 
 class TrueScorer:
     def __init__(self, safety_model_id, usefulness_model_id):
@@ -90,6 +102,18 @@ class TrueScorer:
 
     def wrapper(self, score, **kwargs):
         return score
+
+    @staticmethod
+    def get_min_score():
+        return 0.0
+
+    @staticmethod
+    def get_decent_improvement():
+        return 0.5
+
+    @staticmethod
+    def get_large_improvement():
+        return 1.0
 
     def _get_safety_score(self, rewritten_prompt: str) -> float:
         """
