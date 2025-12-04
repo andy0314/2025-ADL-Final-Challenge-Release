@@ -18,6 +18,7 @@ def parse_args():
     parser.add_argument("--pooling_strategy", default="last")
     parser.add_argument("--max_length", type=int, default=8192)
     parser.add_argument("--embed_instruction", default="Instruct: Retrieve semantically similar text.\nQuery:{query}")
+    parser.add_argument("--batch_size", type=int, default=8)
 
     args = parser.parse_args()
     return args
@@ -41,8 +42,15 @@ def main():
         library = pickle.load(f)
 
     for strategy in tqdm(library.values()):
-        embeddings = model.encode(strategy["Example"])
-        strategy["Embeddings"] = [embed for embed in embeddings]
+        examples = strategy["Example"]
+        embeddings = []
+        for i in range(0, len(examples), args.batch_size):
+            batch = examples[i : i + args.batch_size]
+            batch_embeddings = model.encode(batch)
+            for embed in batch_embeddings:
+                embeddings.append(embed)
+
+        strategy["Embeddings"] = embeddings
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with open(args.output, "wb") as f:
