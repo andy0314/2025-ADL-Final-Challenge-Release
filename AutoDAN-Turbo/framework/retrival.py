@@ -46,7 +46,7 @@ class Retrieval():
             or a single-element list if a high-score strategy was found,
             or an empty list if no suitable strategy meets conditions.
         """
-        self.logger.info(f"Searching for strategies similar to: {query}")
+        # self.logger.info(f"Searching for strategies similar to: {query}")
 
         # --- Step 1: Encode the query ---
         query_embedding = self.embed(query)

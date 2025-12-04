@@ -149,7 +149,7 @@ if __name__ == '__main__':
 
     # Use 'a' (append) mode for resilient, incremental writing
     with open(args.output_file, 'a', encoding='utf-8') as f:
-        for index, record in tqdm(enumerate(dataset)):
+        for index, record in tqdm(enumerate(dataset), total=len(dataset)):
             # Skip already processed samples
             if index < start_index:
                 continue

@@ -135,9 +135,13 @@ class TrueScorer:
 
         # 2. Tokenize and move to device
         try:
-            input_ids = self.guard_tokenizer.apply_chat_template(chat, return_tensors="pt").to(
+            text = self.guard_tokenizer.apply_chat_template(
+                chat, tokenize=False,
+            )
+            model_inputs = self.guard_tokenizer([text], return_tensors="pt").to(
                 self.guard_model.device
             )
+            input_ids = model_inputs.input_ids
         except NameError:
             # Handle case where globals might not be set up correctly
             print("Error: Llama Guard tokenizer/device not found. Ensure models are initialized.")
@@ -145,7 +149,7 @@ class TrueScorer:
 
         # 3. Generate the decision
         output = self.guard_model.generate(
-            input_ids=input_ids,
+            **model_inputs,
             max_new_tokens=512, # Keep this small, as the decision is very short
             pad_token_id=0,
             do_sample=False
@@ -203,11 +207,12 @@ class TrueScorer:
             return 0.0
 
         generated_ids = self.relevance_model.generate(
-            input_ids,
+            **model_inputs,
             do_sample=False,
             max_new_tokens=20,
             temperature=0.0,
-            eos_token_id=self.stop_token_id
+            eos_token_id=self.stop_token_id,
+            pad_token_id=self.stop_token_id,
         )
 
         generated_ids = [
