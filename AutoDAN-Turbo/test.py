@@ -42,7 +42,7 @@ def config():
 
     config.add_argument("--use_llm_scorer", action="store_true")
     config.add_argument("--guard_model", type=str, default="Qwen/Qwen3Guard-Gen-0.6B")
-    config.add_argument("--usefulness_model", type=str, default="Qwen3-1.7B-Usefulness-Judge")
+    config.add_argument("--usefulness_model", type=str, default="theblackcat102/Qwen3-1.7B-Usefulness-Judge")
 
     return config
 
