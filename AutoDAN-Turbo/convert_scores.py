@@ -8,7 +8,7 @@ from framework import Scorer, TrueScorer
 def parse_args():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--input_strategy_library", type=Path, default="logs_r/lifelong_strategy_library.pkl")
+    parser.add_argument("--input_strategy_library", type=Path, default="logs/lifelong_strategy_library.pkl")
     parser.add_argument("--output_strategy_library", type=Path)
 
     args = parser.parse_args()

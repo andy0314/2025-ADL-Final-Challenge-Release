@@ -11,6 +11,7 @@ import pickle
 from datasets import load_dataset
 from tqdm import tqdm
 from pathlib import Path
+import sys
 
 
 def config():
@@ -22,7 +23,7 @@ def config():
     config.add_argument("--strategy_library", type=str, default="./logs/lifelong_strategy_library.pkl")
     config.add_argument("--epochs", type=int, default=150)
     config.add_argument("--break_score", type=float, default=1.0)
-    config.add_argument("--output_file", type=Path, default="../results/autodan-turbo/prompts.jsonl")
+    config.add_argument("--algorithm", default="autodan-turbo")
 
     config.add_argument('--azure', action='store_true', help='Use azure')
     config.add_argument("--azure_endpoint", type=str, default="your_azure_endpoint")
@@ -54,7 +55,7 @@ if __name__ == '__main__':
     logger = logging.getLogger("CustomLogger")
     logger.setLevel(logging.DEBUG)
 
-    output_dir = args.output_file.parent
+    output_dir = Path("../results") / args.algorithm
     output_dir.mkdir(parents=True, exist_ok=True)
     log_file = output_dir / "running.log"
 
@@ -134,12 +135,17 @@ if __name__ == '__main__':
 
     dataset = load_dataset(args.data, split=args.split)
 
+    dataset_name = args.data.split("/")[-1].split(".")[0]
+    inference_file = output_dir / f"prompts_{dataset_name}.jsonl"
+    eval_file = output_dir / f"raw_{dataset_name}.jsonl"
+    summary_file = output_dir / f"summary_{dataset_name}.json"
+
     # --- Resume support by line count ---
     start_index = 0
-    if os.path.exists(args.output_file):
-        print(f"Detected existing results file at {args.output_file}.")
+    if os.path.exists(inference_file):
+        print(f"Detected existing results file at {inference_file}.")
         try:
-            with open(args.output_file, 'r', encoding='utf-8') as f:
+            with open(inference_file, 'r', encoding='utf-8') as f:
                 start_index = len(f.readlines())
         except Exception as e:
             print(f"Warning: Could not parse existing JSONL file to resume: {e}")
@@ -148,20 +154,49 @@ if __name__ == '__main__':
     print(f"Resuming processing from index {start_index}/{total} (skipping {start_index} items already completed).")
 
     # Use 'a' (append) mode for resilient, incremental writing
-    with open(args.output_file, 'a', encoding='utf-8') as f:
+    with open(inference_file, 'a', encoding='utf-8') as f_infer:
         for index, record in tqdm(enumerate(dataset), total=len(dataset)):
             # Skip already processed samples
             if index < start_index:
                 continue
 
             toxic_prompt = record["prompt"]
-            rewritten_prompt = autodan_turbo_pipeline.test(
+            result = autodan_turbo_pipeline.test(
                 toxic_prompt, lifelong_strategy_library
             )
 
+            rec_id = record.get('id', index)
             # Save as a JSON-encoded string, as requested
             try:
-                f.write(json.dumps(rewritten_prompt, ensure_ascii=False) + '\n')
+                f_infer.write(json.dumps(result["jailbreak_prompt"], ensure_ascii=False) + '\n')
             except Exception as e:
-                rec_id = record.get('id', index)
                 print(f"Error writing record {rec_id} to JSONL: {e}")
+
+            if not args.use_llm_scorer:
+                scores = json.loads(result["assessment"])
+                eval_result = {
+                    "id": rec_id,
+                    "original_prompt": toxic_prompt,
+                    "rewritten_prompt": result["jailbreak_prompt"],
+                    "chat_response": result["target_response"],
+                    "safety_score": scores["safety"],
+                    "relevance_score": scores["relevance"],
+                    "cost": record["cost"],
+                }
+
+                # Save as a JSON-encoded string, as requested
+                try:
+                    with open(eval_file, 'a', encoding='utf-8') as f_eval:
+                        f_eval.write(json.dumps(eval_result, ensure_ascii=False) + '\n')
+                except Exception as e:
+                    print(f"Error writing record {rec_id} to JSONL: {e}")
+
+    print(f"\nInference complete. Results saved incrementally to: {inference_file}")
+    if not args.use_llm_scorer:
+        print(f"Evaluation complete. Results saved incrementally to: {eval_file}")
+
+        outer_dir = Path(__file__).resolve().parent.parent
+        sys.path.append(str(outer_dir))
+        from run_eval import calculate_and_save_summary
+
+        calculate_and_save_summary(eval_file, summary_file)

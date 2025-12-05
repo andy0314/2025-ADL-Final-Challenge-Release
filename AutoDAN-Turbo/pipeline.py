@@ -290,6 +290,7 @@ class AutoDANTurbo:
 
     def test(self, request, input_strategy_library):
         jailbreak_prompt = ""
+        best_result = None
         self.test_library = Library(library=input_strategy_library, logger=self.logger)
         for j in range(self.epochs):
             if j == 0:
@@ -333,6 +334,16 @@ class AutoDANTurbo:
                     except Exception as e:
                         self.logger.error(f"Scorer failed to score the response, retrying: {e}")
                 prev_target_response = target_response
+
+            if best_result is None or score >= best_result["score"]:
+                best_result = {
+                    "jailbreak_prompt": jailbreak_prompt,
+                    "target_response": target_response,
+                    "assessment": assessment,
+                    "score": score,
+                }
+
             if score >= self.break_score:
                 break
-        return jailbreak_prompt
+
+        return best_result

@@ -16,7 +16,7 @@ def parse_args():
     parser.add_argument("--attack_log", default="logs_r/lifelong_attack_log.json")
     parser.add_argument("--summarizer_log", default="logs_r/lifelong_summarizer_log.json")
     parser.add_argument("--input_strategy_library", default="logs_r/lifelong_strategy_library.pkl")
-    parser.add_argument("--output_strategy_library", type=Path, default="logs_r/Qwen3-Embedding-0.6B/lifelong_strategy_library.pkl")
+    parser.add_argument("--output_strategy_library", type=Path, default="logs/lifelong_strategy_library.pkl")
 
     parser.add_argument("--embedding_model", default="Qwen/Qwen3-Embedding-0.6B")
     parser.add_argument("--pooling_strategy", default="last")

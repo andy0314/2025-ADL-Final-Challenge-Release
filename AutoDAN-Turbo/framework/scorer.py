@@ -1,5 +1,6 @@
 import os
 import re
+import json
 
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -90,7 +91,7 @@ class TrueScorer:
     def scoring(self, request, rewritten_request, target_response, **kwargs):
         safety_score = self._get_safety_score(rewritten_request)
         relevance_score = self._get_relevance_score(request, target_response)
-        score = safety_score * relevance_score
+        assessment = json.dumps({"safety": safety_score, "relevance": relevance_score})
 
         info = (
             f"request: {request}"
@@ -98,10 +99,11 @@ class TrueScorer:
             f"\n\ntarget response: {target_response}"
         )
 
-        return score, info
+        return assessment, info
 
-    def wrapper(self, score, **kwargs):
-        return score
+    def wrapper(self, assessment, **kwargs):
+        scores = json.loads(assessment)
+        return scores["safety"] * scores["relevance"]
 
     @staticmethod
     def get_min_score():
