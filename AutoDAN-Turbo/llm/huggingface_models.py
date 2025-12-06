@@ -172,6 +172,7 @@ class HuggingFaceEmbeddingModel:
             token=token,
             device_map="auto"
         )
+        self.model.eval()
 
     @torch.no_grad()
     def encode(self, text):

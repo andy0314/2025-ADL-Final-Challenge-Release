@@ -171,7 +171,6 @@ if __name__ == '__main__':
     target = Target(model)
     # configure your own target model here
 
-    init_library, init_attack_log, init_summarizer_log = {}, [], []
     attack_kit = {
         'attacker': attacker,
         'scorer': scorer,
@@ -210,11 +209,12 @@ if __name__ == '__main__':
         autodan_turbo_pipeline.hot_start_lifelong(warm_up_attack_log)
     else:
         if args.hot:
-            init_attack_log = json.load(open(warm_up_attack_log_file, 'r'))
-            warm_up_strategy_library, warm_up_attack_log, warm_up_summarizer_log = autodan_turbo_pipeline.hot_start(init_attack_log)
+            warm_up_attack_log = json.load(open(warm_up_attack_log_file, 'r'))
         else:
-            warm_up_strategy_library, warm_up_attack_log, warm_up_summarizer_log = autodan_turbo_pipeline.warm_up(init_library, init_attack_log, init_summarizer_log)
+            warm_up_attack_log = autodan_turbo_pipeline.warm_up([])
+            save_data({}, warm_up_attack_log, [], warm_up_strategy_library_file, warm_up_strategy_library_pkl, warm_up_attack_log_file, warm_up_summarizer_log_file)
 
+        warm_up_strategy_library, warm_up_attack_log, warm_up_summarizer_log = autodan_turbo_pipeline.hot_start(warm_up_attack_log)
         save_data(warm_up_strategy_library, warm_up_attack_log, warm_up_summarizer_log, warm_up_strategy_library_file, warm_up_strategy_library_pkl, warm_up_attack_log_file, warm_up_summarizer_log_file)
 
     for i in range(args.lifelong_iterations):

@@ -96,7 +96,7 @@ class AutoDANTurbo:
         self.warm_up_running = 0
         self.warm_up_running += len(self.warm_up_log.all())
 
-    def warm_up(self, input_strategy_library, input_attack_log, input_summarizer_log):
+    def warm_up(self, input_attack_log):
         wandb.config.update({"stage": "warm_up"})
         self.warm_up_log = Log(entries=input_attack_log)
         for i in range(self.warm_up_iterations):
@@ -154,9 +154,8 @@ class AutoDANTurbo:
                     })
                     if score >= self.break_score:
                         break
-        strategy_library, summarizer_log = self.build_from_warm_up_log(input_strategy_library, input_summarizer_log)
         attack_log = self.warm_up_log.all()
-        return strategy_library, attack_log, summarizer_log
+        return attack_log
 
     def lifelong_redteaming(self, input_strategy_library, input_attack_log, input_summarizer_log):
         wandb.config.update({"stage": "lifelong"}, allow_val_change=True)
