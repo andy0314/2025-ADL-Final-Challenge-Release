@@ -226,8 +226,8 @@ class AutoDANTurbo:
                                 json_formatted_strategy = self.summarizer.wrapper(strategy, max_length=2000, do_sample=True, temperature=0.6, top_p=0.9)
                                 jailbreak_strategy = json.loads(json_formatted_strategy)
                                 not_scussed = False
-                            except:
-                                self.logger.error("Summarizer failed to summarize the strategy, retrying")
+                            except Exception as e:
+                                self.logger.error(f"Summarizer failed to summarize the strategy, retrying: {e}")
                                 continue
                         jailbreak_strategy["Example"] = [jailbreak_prompt]
                         jailbreak_strategy["Score"] = [score - prev_score]
