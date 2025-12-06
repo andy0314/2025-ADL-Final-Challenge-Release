@@ -47,6 +47,7 @@ def config():
     config.add_argument("--use_llm_scorer", action="store_true")
     config.add_argument("--guard_model", type=str, default="Qwen/Qwen3Guard-Gen-0.6B")
     config.add_argument("--usefulness_model", type=str, default="theblackcat102/Qwen3-1.7B-Usefulness-Judge")
+    config.add_argument("--scorer_epsilon", type=float, default="0.1")
 
     config.add_argument("--debug", action='store_true', help='debug')
     return config
@@ -139,7 +140,7 @@ if __name__ == '__main__':
     if args.use_llm_scorer:
         scorer = Scorer(language_model)
     else:
-        scorer = TrueScorer(args.guard_model, args.usefulness_model)
+        scorer = TrueScorer(args.guard_model, args.usefulness_model, args.scorer_epsilon)
 
     if args.azure:
         text_embedding_model = OpenAIEmbeddingModel(azure=True,
