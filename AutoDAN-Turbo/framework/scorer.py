@@ -91,8 +91,12 @@ class TrueScorer:
         self.epsilon = epsilon
 
     def scoring(self, request, rewritten_request, target_response, **kwargs):
-        safety_score = self._get_safety_score(rewritten_request) + self.epsilon
-        relevance_score = self._get_relevance_score(request, target_response) + self.epsilon
+        safety_score = self._get_safety_score(rewritten_request)
+        safety_score = safety_score if safety_score > 0 else self.epsilon
+
+        relevance_score = self._get_relevance_score(request, target_response)
+        relevance_score = relevance_score if relevance_score > 0 else self.epsilon
+
         assessment = json.dumps({"safety": safety_score, "relevance": relevance_score})
 
         info = (
