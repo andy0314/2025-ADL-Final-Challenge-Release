@@ -148,7 +148,7 @@ class HuggingFaceLanguageModel:
 
     def _get_message_turns(self, system, user):
         if self.combine_system_user:
-            return [{"role": "user", "content": f"{system}\n\n{user}"}]
+            return [{"role": "user", "content": f"[SYSTEM]: {system}\n\n[USER]: {user}"}]
         else:
             return [
                 {"role": "system", "content": system},
