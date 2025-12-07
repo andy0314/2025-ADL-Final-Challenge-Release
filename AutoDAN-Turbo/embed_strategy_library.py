@@ -22,6 +22,7 @@ def parse_args():
     parser.add_argument("--pooling_strategy", default="last")
     parser.add_argument("--max_length", type=int, default=8192)
     parser.add_argument("--embed_instruction", default="Instruct: Retrieve semantically similar text.\nQuery:{query}")
+    parser.add_argument("--quantize_embedder", action="store_true")
     parser.add_argument("--batch_size", type=int, default=8)
 
     args = parser.parse_args()
@@ -35,11 +36,12 @@ def main():
     hf_token = os.getenv("HF_TOKEN")
 
     model = HuggingFaceEmbeddingModel(
-        args.embedding_model,
-        args.pooling_strategy,
-        args.max_length,
-        args.embed_instruction,
-        hf_token,
+        repo_name=args.embedding_model,
+        should_quantize=args.quantize_embedder,
+        token=hf_token,
+        pooling_strategy=args.pooling_strategy,
+        max_length=args.embed_max_length,
+        embed_instruction=args.embed_instruction,
     )
 
     with open(args.attack_log, "r") as f:

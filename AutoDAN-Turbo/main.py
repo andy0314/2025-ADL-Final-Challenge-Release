@@ -40,9 +40,11 @@ def config():
     config.add_argument("--pooling_strategy", type=str, default="last")
     config.add_argument("--embed_max_length", type=int, default=8192)
     config.add_argument("--embed_instruction", type=str, default="Instruct: Retrieve semantically similar text.\nQuery:{query}")
+    config.add_argument("--quantize_embedder", action="store_true")
 
     config.add_argument("--language_model", type=str, default="google/gemma-1.1-2b-it")
     config.add_argument("--lm_combine_system_user", action="store_true")
+    config.add_argument("--quantize_lm", action="store_true")
 
     config.add_argument("--use_llm_scorer", action="store_true")
     config.add_argument("--guard_model", type=str, default="Qwen/Qwen3Guard-Gen-0.6B")
@@ -132,7 +134,10 @@ if __name__ == '__main__':
     # configure your own base model here
 
     language_model = HuggingFaceLanguageModel(
-        args.language_model, args.lm_combine_system_user, hf_token
+        repo_name=args.language_model,
+        should_quantize=args.quantize_lm,
+        token=hf_token,
+        combine_system_user=args.lm_combine_system_user,
     )
     attacker = Attacker(language_model)
     summarizer = Summarizer(language_model)
@@ -157,7 +162,12 @@ if __name__ == '__main__':
                                                     embedding_model=args.embedding_model)
     else:
         text_embedding_model = HuggingFaceEmbeddingModel(
-            args.embedding_model, args.pooling_strategy, args.embed_max_length, args.embed_instruction, hf_token
+            repo_name=args.embedding_model,
+            should_quantize=args.quantize_embedder,
+            token=hf_token,
+            pooling_strategy=args.pooling_strategy,
+            max_length=args.embed_max_length,
+            embed_instruction=args.embed_instruction,
         )
     retrival = Retrieval(
         text_embedding_model,

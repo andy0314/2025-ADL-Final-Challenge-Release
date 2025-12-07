@@ -1,4 +1,4 @@
-from transformers import AutoModelForCausalLM, AutoTokenizer, AutoModel
+from transformers import AutoModelForCausalLM, AutoTokenizer, AutoModel, BitsAndBytesConfig
 import torch
 import torch.nn.functional as F
 import numpy as np
@@ -9,8 +9,19 @@ def strip_double_quotes(input_str):
         return input_str[1:-1]
     return input_str
 
+
+MODEL_DTYPE = torch.bfloat16 if torch.cuda.is_available() and torch.cuda.get_device_capability()[0] >= 8 else torch.float16
+BASE_MODEL_KWARGS = {"torch_dtype": MODEL_DTYPE, "device_map": "auto"}
+QUANTIZATION_CONFIG = BitsAndBytesConfig(
+    load_in_4bit=True,
+    bnb_4bit_compute_dtype=MODEL_DTYPE,
+    bnb_4bit_quant_type="nf4",
+    bnb_4bit_use_double_quant=True,
+)
+
+
 class HuggingFaceLanguageModel:
-    def __init__(self, repo_name: str, combine_system_user=False, token=None):
+    def __init__(self, repo_name: str, combine_system_user=False, should_quantize=False, token=None):
         """
         Initialize the Hugging Face model class in a distributed manner.
 
@@ -20,14 +31,12 @@ class HuggingFaceLanguageModel:
         """
         self.tokenizer = AutoTokenizer.from_pretrained(repo_name, token=token)
 
-        print(f"Loading language model {repo_name} with automatic device mapping across GPUs.")
-        dtype = torch.bfloat16 if torch.cuda.is_available() and torch.cuda.get_device_capability()[0] >= 8 else torch.float16
-        self.model = AutoModelForCausalLM.from_pretrained(
-            repo_name,
-            torch_dtype=dtype,
-            token=token,
-            device_map="auto"
-        )
+        model_kwargs = BASE_MODEL_KWARGS.copy()
+        if should_quantize:
+            model_kwargs["quantization_config"] = QUANTIZATION_CONFIG
+        print(f"Loading language model {repo_name} with config {model_kwargs}")
+        self.model = AutoModelForCausalLM.from_pretrained(repo_name, token=token, **model_kwargs)
+        self.model.eval()
 
         self.combine_system_user = combine_system_user
 
@@ -148,7 +157,15 @@ class HuggingFaceLanguageModel:
 
 
 class HuggingFaceEmbeddingModel:
-    def __init__(self, repo_name: str, pooling_strategy: str, max_length: int, embed_instruction: str, token=None):
+    def __init__(
+            self,
+            repo_name: str,
+            pooling_strategy: str,
+            max_length: int,
+            embed_instruction: str,
+            should_quantize=False,
+            token=None,
+        ):
         """
         Initialize the Hugging Face model class in a distributed manner.
 
@@ -164,14 +181,11 @@ class HuggingFaceEmbeddingModel:
         self.max_length = max_length
         self.embed_instruction = embed_instruction
 
-        print(f"Loading embedding model {repo_name} with automatic device mapping across GPUs.")
-        dtype = torch.bfloat16 if torch.cuda.is_available() and torch.cuda.get_device_capability()[0] >= 8 else torch.float16
-        self.model = AutoModel.from_pretrained(
-            repo_name,
-            torch_dtype=dtype,
-            token=token,
-            device_map="auto"
-        )
+        model_kwargs = BASE_MODEL_KWARGS.copy()
+        if should_quantize:
+            model_kwargs["quantization_config"] = QUANTIZATION_CONFIG
+        print(f"Loading embedding model {repo_name} with config {model_kwargs}")
+        self.model = AutoModel.from_pretrained(repo_name, token=token, **model_kwargs)
         self.model.eval()
 
     @torch.no_grad()
