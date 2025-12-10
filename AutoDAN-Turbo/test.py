@@ -179,8 +179,10 @@ if __name__ == '__main__':
             # Save as a JSON-encoded string, as requested
             try:
                 f_infer.write(json.dumps(result["jailbreak_prompt"], ensure_ascii=False) + '\n')
+                f_infer.flush()
             except Exception as e:
                 print(f"Error writing record {rec_id} to JSONL: {e}")
+                exit(1)
 
             if not args.use_llm_scorer:
                 scores = json.loads(result["assessment"])
@@ -194,12 +196,18 @@ if __name__ == '__main__':
                     "cost": record["cost"],
                 }
 
+                tqdm.write(
+                    f"id: {rec_id}, cost: {record['cost']}, score: {result['score']}"
+                    f" (safety: {scores['safety']}, relevance: {scores['relevance']})"
+                )
+
                 # Save as a JSON-encoded string, as requested
                 try:
                     with open(eval_file, 'a', encoding='utf-8') as f_eval:
                         f_eval.write(json.dumps(eval_result, ensure_ascii=False) + '\n')
                 except Exception as e:
                     print(f"Error writing record {rec_id} to JSONL: {e}")
+                    exit(1)
 
     print(f"\nInference complete. Results saved incrementally to: {inference_file}")
     if not args.use_llm_scorer:
