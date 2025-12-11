@@ -125,7 +125,7 @@ if __name__ == '__main__':
     logger.addHandler(file_handler)
     logger.addHandler(console_handler)
 
-    wandb.init(project=args.project_name, name=args.run_name)
+    wandb.init(project=args.project_name, name=args.run_name, config=args)
 
     load_dotenv()
     hf_token = os.getenv("HF_TOKEN")
