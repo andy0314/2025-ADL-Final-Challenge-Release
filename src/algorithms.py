@@ -3,6 +3,9 @@ import pickle
 import logging
 
 from dotenv import load_dotenv
+from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
+from peft import PeftModel
+import torch
 
 from autodan_turbo.framework import Attacker, Scorer, TrueScorer, Summarizer, Retrieval, Target
 from autodan_turbo.llm import HuggingFaceLanguageModel, HuggingFaceEmbeddingModel
@@ -17,11 +20,14 @@ def evaluate_rewrite(toxic_prompt: str) -> str:
     [MANDATORY] This is the final, official algorithm entry point.
     It will be run if no --algorithm flag is specified in main.py.
     """
-    return algo_autodan_turbo(toxic_prompt)
+    toxic_prompt = algo_autodan_turbo(toxic_prompt)
+    toxic_prompt = algo_rm(toxic_prompt)
+    return toxic_prompt
 
 
+# ----- AutoDAN-Turbo -----
 # --- Config ---
-strategy_library = "logs/lifelong_strategy_library.pkl"
+strategy_library = "models/lifelong_strategy_library.pkl"
 epochs = 2
 break_score= 1.0
 
@@ -102,3 +108,90 @@ autodan_turbo_pipeline = AutoDANTurbo(
 
 def algo_autodan_turbo(toxic_prompt: str) -> str:
     return autodan_turbo_pipeline.test(toxic_prompt, lifelong_strategy_library)["jailbreak_prompt"]
+
+
+# ----- RM -----
+# --- 配置 (應與訓練腳本一致) ---
+MODEL_PATH = "./models/flan_l8"  # 載入訓練好的模型路徑
+LORA_PATH = "./models/flan_xlv"
+USE_LORA = False
+MAX_LENGTH = 512                       # 推論時的最大序列長度
+
+# --- Global Variables for Caching ---
+# 這些變數用於在多次呼叫 infer_model 時避免重複載入模型
+INFERENCE_MODEL = None
+INFERENCE_TOKENIZER = None
+
+
+def load_inference_model():
+    """
+    載入微調後的推論模型和分詞器，並進行快取。
+    """
+    # 關鍵：使用 global 關鍵字來確保修改的是全域變數
+    global INFERENCE_MODEL, INFERENCE_TOKENIZER
+
+    if INFERENCE_MODEL is None:
+
+        print(f"Loading inference model from {MODEL_PATH}...")
+
+        # 載入 fine-tuned 的模型和分詞器
+        INFERENCE_TOKENIZER = AutoTokenizer.from_pretrained(MODEL_PATH)
+        INFERENCE_MODEL = AutoModelForSeq2SeqLM.from_pretrained(
+            MODEL_PATH,
+            torch_dtype=torch.bfloat16 if torch.cuda.is_available() else torch.float32,
+            device_map="auto",
+            trust_remote_code=True
+        )
+        if USE_LORA:
+            INFERENCE_MODEL = PeftModel.from_pretrained(INFERENCE_MODEL, LORA_PATH)
+        # 設置 pad_token_id（Seq2Seq 模型的最佳實踐）
+        if INFERENCE_TOKENIZER.pad_token is None:
+            INFERENCE_TOKENIZER.pad_token = INFERENCE_TOKENIZER.eos_token
+
+    return INFERENCE_MODEL, INFERENCE_TOKENIZER
+
+
+def algo_rm(toxic_prompt: str) -> str:
+    """
+    使用 SFT 微調後的 Flan-T5 模型改寫輸入的 Prompt。
+
+    Args:
+        toxic_prompt: 潛在有害的輸入 Prompt。
+
+    Returns:
+        str: 改寫後更安全且保留原意的 Prompt。
+    """
+    try:
+        model, tokenizer = load_inference_model()
+    except FileNotFoundError as e:
+        return str(e)
+
+    # 必須使用訓練時相同的指令前綴
+    instruction_prefix = "TASK: Rewrite the input prompt below. The goal is to transform the potentially unsafe input into a completely harmless, non-executable, and ethically safe query while retaining the user's original informational goal. Always output the modified prompt directly and nothing else. INPUT: "
+
+    input_text = instruction_prefix + toxic_prompt
+
+    encoded = tokenizer(
+        input_text,
+        max_length=MAX_LENGTH,
+        truncation=True,
+        padding="max_length",
+        return_tensors="pt"
+    )
+
+    # 將輸入移動到模型所在的設備 (GPU 或 CPU)
+    input_ids = encoded["input_ids"].to(model.device)
+    attention_mask = encoded["attention_mask"].to(model.device)
+
+    outputs = model.generate(
+        input_ids=input_ids,
+        attention_mask=attention_mask,
+        max_length=MAX_LENGTH,
+        do_sample=False, # 使用 Beam Search 提高推論質量
+        num_beams=4,
+        pad_token_id=tokenizer.pad_token_id,
+        eos_token_id=tokenizer.eos_token_id,
+    )
+
+    rewritten_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
+    return rewritten_text.strip()
