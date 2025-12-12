@@ -114,17 +114,21 @@ if __name__ == '__main__':
             max_length=args.embed_max_length,
             embed_instruction=args.embed_instruction,
         )
+
+    with open(args.strategy_library, 'rb') as f:
+        lifelong_strategy_library = pickle.load(f)
+
     retrival = Retrieval(
         text_embedding_model,
         logger,
         scorer.get_decent_improvement(),
         scorer.get_large_improvement(),
+        lifelong_strategy_library,
     )
 
     target = Target(model)
     # configure your own target model here
 
-    init_library, init_attack_log, init_summarizer_log = {}, [], []
     attack_kit = {
         'attacker': attacker,
         'scorer': scorer,
@@ -139,9 +143,6 @@ if __name__ == '__main__':
                                           break_score=args.break_score,
                                           warm_up_iterations=None,
                                           lifelong_iterations=None)
-
-    with open(args.strategy_library, 'rb') as f:
-        lifelong_strategy_library = pickle.load(f)
 
     dataset = load_dataset(args.data, split=args.split)
 

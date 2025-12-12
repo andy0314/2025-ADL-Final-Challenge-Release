@@ -3,7 +3,7 @@ import faiss
 import numpy as np
 
 class Retrieval():
-    def __init__(self, text_embedding_model, logger, decent_improvement, large_improvement):
+    def __init__(self, text_embedding_model, logger, decent_improvement, large_improvement, library=None):
         """
         :param text_embedding_model: Any model with an `.encode(text) -> np.array` method.
         :param logger: A logger instance for logging.
@@ -12,6 +12,16 @@ class Retrieval():
         self.logger = logger
         self.decent_improvement = decent_improvement
         self.large_improvement = large_improvement
+
+        self.library_index = None
+        if library is not None:
+            library_index = self._build_library_index(library)
+            if library_index:
+                self.library_index = library_index
+                self.library_index["library"] = library
+                logger.info("Library index pre-built successfully")
+            else:
+                logger.warning("Failed to pre-build library index")
 
     def embed(self, text):
         """Encode text using the provided model."""
@@ -56,48 +66,22 @@ class Retrieval():
         else:
             query_embedding = query_embedding.astype(np.float32)
 
-        # --- Step 2: Collect all embeddings separately ---
-        all_embeddings = []
-        all_scores = []
-        all_example = []
-        reverse_map = []  # Map each row index in the Faiss index -> (strategy_name)
+        # --- Step 2, 3: Possibly build library index
+        if self.library_index is not None:
+            library = self.library_index["library"]
+            library_index = self.library_index
+        else:
+            library_index = self._build_library_index(library)
+            if not library_index:
+                return False, []
 
-        # Gather each embedding from each strategy
-        for s_name, s_info in library.items():
-            emb_list = s_info["Embeddings"]
-            score_list = s_info["Score"]
-            example_list = s_info["Example"]
-            for i in range(len(emb_list)):
-                emb = emb_list[i]
-                score = score_list[i]
-                example = example_list[i]
-                # Convert to float32 if not already
-                if not isinstance(emb, np.ndarray):
-                    emb = np.array(emb, dtype=np.float32)
-                else:
-                    emb = emb.astype(np.float32)
-
-                all_embeddings.append(emb)
-                all_scores.append(score)
-                all_example.append(example)
-                reverse_map.append(s_name)  # So we know which strategy this embedding belongs to
-
-        # If there are no embeddings in the entire library, return early
-        if len(all_embeddings) == 0:
-            self.logger.error("No embeddings found in the library.")
-            return True, []
-
-        # Convert list of embeddings to a single float32 matrix
-        all_embeddings = np.array(all_embeddings, dtype=np.float32)
-        dim = all_embeddings.shape[1]
-
-        # --- Step 3: Build a Faiss index (IndexFlatL2 is brute-force) ---
-        index = faiss.IndexFlatL2(dim)  # Brute force, O(n)
-        index.add(all_embeddings)
+        index, all_example, all_scores, reverse_map = (
+            library_index["index"], library_index["all_example"], library_index["all_scores"], library_index["reverse_map"]
+        )
 
         # --- Step 4: Retrieve the top-2k nearest embeddings ---
-        num_to_retrieve = len(all_embeddings)
-        distances, indices = index.search(query_embedding.reshape(1, dim), num_to_retrieve)
+        num_to_retrieve = index.ntotal
+        distances, indices = index.search(query_embedding.reshape(1, -1), num_to_retrieve)
 
         # Flatten
         distances, indices = distances[0], indices[0]
@@ -154,3 +138,49 @@ class Retrieval():
             return False, final_ineffective_strategies[:k]
         return False, final_ineffective_strategies
 
+    def _build_library_index(self, library):
+        # --- Step 2: Collect all embeddings separately ---
+        all_embeddings = []
+        all_scores = []
+        all_example = []
+        reverse_map = []  # Map each row index in the Faiss index -> (strategy_name)
+
+        # Gather each embedding from each strategy
+        for s_name, s_info in library.items():
+            emb_list = s_info["Embeddings"]
+            score_list = s_info["Score"]
+            example_list = s_info["Example"]
+            for i in range(len(emb_list)):
+                emb = emb_list[i]
+                score = score_list[i]
+                example = example_list[i]
+                # Convert to float32 if not already
+                if not isinstance(emb, np.ndarray):
+                    emb = np.array(emb, dtype=np.float32)
+                else:
+                    emb = emb.astype(np.float32)
+
+                all_embeddings.append(emb)
+                all_scores.append(score)
+                all_example.append(example)
+                reverse_map.append(s_name)  # So we know which strategy this embedding belongs to
+
+        # If there are no embeddings in the entire library, return early
+        if len(all_embeddings) == 0:
+            self.logger.error("No embeddings found in the library.")
+            return {}
+
+        # Convert list of embeddings to a single float32 matrix
+        all_embeddings = np.array(all_embeddings, dtype=np.float32)
+        dim = all_embeddings.shape[1]
+
+        # --- Step 3: Build a Faiss index (IndexFlatL2 is brute-force) ---
+        index = faiss.IndexFlatL2(dim)  # Brute force, O(n)
+        index.add(all_embeddings)
+
+        return {
+            "index": index,
+            "all_example": all_example,
+            "all_scores": all_scores,
+            "reverse_map": reverse_map,
+        }
