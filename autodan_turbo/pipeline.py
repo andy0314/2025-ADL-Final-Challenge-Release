@@ -1,4 +1,4 @@
-from framework import Library, Log
+from .framework import Library, Log
 import json
 import wandb
 
